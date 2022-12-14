@@ -1,4 +1,7 @@
 # CKA08- Kubernetes Networking
+
+[![hackmd-github-sync-badge](https://hackmd.io/uJdmJ7iER2yWbEJ3pQ7aaA/badge)](https://hackmd.io/uJdmJ7iER2yWbEJ3pQ7aaA)
+
 ## 1. Networking Prerequisites
 - **Switch**: 連結兩個系統的網路介面 (Network Interface, 如 eth0)。
 - **Router**: 連結兩個不同的網路，使其能夠溝通。
