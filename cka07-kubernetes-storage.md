@@ -1,4 +1,7 @@
 # CKA07- Kubernetes Storage
+
+[![hackmd-github-sync-badge](https://hackmd.io/5JpvIgI7SIqvIx11zD4jGQ/badge)](https://hackmd.io/5JpvIgI7SIqvIx11zD4jGQ)
+
 ## 1. Storage in Docker
 Image Layer vs Container Layer
 - Image Layer -> Read-only
