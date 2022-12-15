@@ -1,4 +1,7 @@
 # CKA06- Kubernetes Security
+
+[![hackmd-github-sync-badge](https://hackmd.io/oxhV2yBQTr6kxpc74H2Ufg/badge)](https://hackmd.io/oxhV2yBQTr6kxpc74H2Ufg)
+
 ## 1. Kubernetes Security Primitives
 Kubernetes 安全管理:
 1. **Authentication (驗證): Who can access?**: 使用者是否是其所宣稱的那個人。
