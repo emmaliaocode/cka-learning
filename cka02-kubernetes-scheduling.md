@@ -1,7 +1,10 @@
 # CKA02- Kubernetes Scheduling
 
+[![hackmd-github-sync-badge](https://hackmd.io/bMDSUyJCQBydcW-V3BT9JA/badge)](https://hackmd.io/bMDSUyJCQBydcW-V3BT9JA)
+
+
 ## 1. Manual Scheduling to a Specific Node
-Master Node 若無 Scheduler， Pod Status 將停留在 `Pending`。
+Scheduler 沒有參與調度 Pod。
 ### 1.1. `nodeName`
 在指定 Node 新增 Pod。
 ```yaml
@@ -37,6 +40,7 @@ http://$SERVER/api/v1/namespaces/default/pods/$PODNAME/binding/
 ```
 
 ## 2. Automatically Scheduling to a Prefer Node
+Scheduler 調度 Pod。Master Node 若無 Scheduler， Pod Status 將停留在 `Pending`。
 ### 2.1. Labels and Selectors
 #### 列出符合 `Key=Value` 的 Pod。
 ```
@@ -243,7 +247,22 @@ kubectl get ds -A
 #### 2.7.1. 查看 Static Pod YAML 放置位置
 印出 Kubelet 的 Configuration，看 `staticPodPath`，通常 Static Pod YAML 會放在 `/etc/kubernetes/manifests`。
 ```
-cat /var/lib/kubelet/config.yaml
+ps -aux | grep kubelet | grep --color config
+```
+```!
+root        2336  0.0  0.0 4227428 99728 ?       Ssl  13:11   0:34 /usr/bin/kubelet --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --config=/var/lib/kubelet/config.yaml --container-runtime=remote --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock --pod-infra-container-image=k8s.gcr.io/pause:3.7
+```
+```
+cat /var/lib/kubelet/config.yaml | grep static
+```
+```
+staticPodPath: /etc/kubernetes/manifests
+```
+```
+ls /etc/kubernetes/manifests
+```
+```!
+etcd.yaml  kube-apiserver.yaml  kube-controller-manager.yaml  kube-scheduler.yaml
 ```
 #### 2.7.2. Static Pod 命名規則
 Static Pods 的名字會以 Node Name 做結尾。例如 `etcd-controlplane`, `kube-apiserver-controlplane`, `kube-controller-manager-controlplane`, `kube-scheduler-controlplane`。
@@ -314,13 +333,48 @@ kubectl create -f my-custom-scheduler.yaml
 ```
 ### 3.2. 以 Deployment 部署 Customized Scheduler
 > [Doc: Configure Multiple Schedulers](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-multiple-schedulers/)
+### 3.3. `schedulerName`
+透過特定 Scheduler 來調度 Pod。
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  schedulerName: my-scheduler
+  containers:
+  - image: nginx
+    name: nginx
+```
 ### 3.3. 查看調度 Pod 的 Scheduler
 ```
 kubectl get event -o wide
 ```
 ```
-kubectl logs [scheduler pod name] -n kube-system
+LAST SEEN   TYPE      REASON                    OBJECT              SUBOBJECT                SOURCE                                    MESSAGE                                                               FIRST SEEN   COUNT   NAME
+26m         Normal    NodeHasSufficientMemory   node/controlplane                            kubelet, controlplane                     Node controlplane status is now: NodeHasSufficientMemory              26m          7       controlplane.1733be07ee6cb4f8
+26m         Normal    NodeHasNoDiskPressure     node/controlplane                            kubelet, controlplane                     Node controlplane status is now: NodeHasNoDiskPressure                26m          7       controlplane.1733be07ee6cf8ba
+26m         Normal    NodeHasSufficientPID      node/controlplane                            kubelet, controlplane                     Node controlplane status is now: NodeHasSufficientPID                 26m          6       controlplane.1733be07ee6d2e4f
+26m         Normal    NodeAllocatableEnforced   node/controlplane                            kubelet, controlplane                     Updated Node Allocatable limit across pods                            26m          1       controlplane.1733be08b3c0bf8c
+25m         Normal    Starting                  node/controlplane                            kubelet, controlplane                     Starting kubelet.                                                     25m          1       controlplane.1733be0f5a701779
+25m         Warning   InvalidDiskCapacity       node/controlplane                            kubelet, controlplane                     invalid capacity 0 on image filesystem                                25m          1       controlplane.1733be0f5fa25327
+25m         Normal    NodeHasSufficientMemory   node/controlplane                            kubelet, controlplane                     Node controlplane status is now: NodeHasSufficientMemory              25m          1       controlplane.1733be0f65bffa1e
+25m         Normal    NodeHasNoDiskPressure     node/controlplane                            kubelet, controlplane                     Node controlplane status is now: NodeHasNoDiskPressure                25m          1       controlplane.1733be0f65c04d4b
+25m         Normal    NodeHasSufficientPID      node/controlplane                            kubelet, controlplane                     Node controlplane status is now: NodeHasSufficientPID                 25m          1       controlplane.1733be0f65c061bb
+25m         Normal    NodeAllocatableEnforced   node/controlplane                            kubelet, controlplane                     Updated Node Allocatable limit across pods                            25m          1       controlplane.1733be0fb2857169
+25m         Normal    RegisteredNode            node/controlplane                            node-controller                           Node controlplane event: Registered Node controlplane in Controller   25m          1       controlplane.1733be11b3ba02dc
+25m         Normal    Starting                  node/controlplane                            kube-proxy, kube-proxy-controlplane                                                                             25m          1       controlplane.1733be13235d22af
+25m         Normal    NodeReady                 node/controlplane                            kubelet, controlplane                     Node controlplane status is now: NodeReady                            25m          1       controlplane.1733be1433246dd0
+90s         Normal    Scheduled                 pod/nginx                                    my-scheduler, my-scheduler-my-scheduler   Successfully assigned default/nginx to controlplane                   90s          1       nginx.1733bf641f0ea55e
+80s         Normal    Pulling                   pod/nginx           spec.containers{nginx}   kubelet, controlplane                     Pulling image "nginx"                                                 80s          1       nginx.1733bf6684026b34
+79s         Normal    Pulled                    pod/nginx           spec.containers{nginx}   kubelet, controlplane                     Successfully pulled image "nginx" in 311.46565ms                      79s          1       nginx.1733bf669693738a
+78s         Normal    Created                   pod/nginx           spec.containers{nginx}   kubelet, controlplane                     Created container nginx                                               78s          1       nginx.1733bf66e8d245d1
+71s         Normal    Started                   pod/nginx           spec.containers{nginx}   kubelet, controlplane                     Started container nginx                                               71s          1       nginx.1733bf68800f550d
 ```
+```
+kubectl logs [schedulerPodName] -n kube-system
+```
+
 
 ## 4. Note
 ### Pod 一直呈現 `Pending` 可能的原因 ...
