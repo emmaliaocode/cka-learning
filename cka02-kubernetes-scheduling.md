@@ -346,7 +346,7 @@ spec:
   - image: nginx
     name: nginx
 ```
-### 3.3. 查看調度 Pod 的 Scheduler
+### 3.3. 查看 Scheduler
 ```
 kubectl get event -o wide
 ```
