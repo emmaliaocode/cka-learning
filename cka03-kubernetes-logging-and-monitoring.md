@@ -1,5 +1,8 @@
 # CKA03- Kubernetes Logging and Monitoring
 
+[![hackmd-github-sync-badge](https://hackmd.io/XaRTvGiuRtOfMd0q5_-DWg/badge)](https://hackmd.io/XaRTvGiuRtOfMd0q5_-DWg)
+
+
 ## 1. Monitor Cluster Components
 ### 1.1. Metrics Server
 Kubelet 裡的 **cAdvisor (Container Advisor)** 會負責擷取 Pod 的 Performance Metrics 資料，並透過 Kubelet API 傳給 Metrics Server。
@@ -36,7 +39,7 @@ rabbit     122m         252Mi
 ```
 
 ## 2. Logs
-如果一個 Pod 內有多個 Container 需要在 `kubectl logs [pod name]` 後再指定 Container Name。
+如果一個 Pod 內有多個 Container 需要在 `kubectl logs [podName]` 後再指定 Container Name。
 ```yaml
 apiVersion: v1
 kind: Pod
