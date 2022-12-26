@@ -1,4 +1,7 @@
 # CKA05- Kubernetes Cluster Maintenance
+
+[![hackmd-github-sync-badge](https://hackmd.io/XGx9fgFjSkqc1JYCc7xNPQ/badge)](https://hackmd.io/XGx9fgFjSkqc1JYCc7xNPQ)
+
 ## 1. OS Upgrade
 Controller Manager 設定 `pod-eviction-timeout=5m`，因此如果 Node 超過五分鐘沒有復原，就會把該 Node 上的 Pod 移到其他的 Node 上。
 ### 1.1. Drain
