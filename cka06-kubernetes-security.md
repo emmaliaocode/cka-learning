@@ -7,7 +7,7 @@ Kubernetes 安全管理:
 1. **Authentication (驗證): Who can access?**: 使用者是否是其所宣稱的那個人。
 	- Username & Passwords (Files)
 	- Username & Tokens (Files)
-	- Certificates
+	- TLS Certificates
 	- External Authentication providers - LDAP
 	- Service Accounts
 2. **Authorization (授權): What can they do?**: 根據使用者的角色授予應有的權限。
@@ -65,7 +65,7 @@ https://[masterNodeIP]:6443/api/v1/pods \
 用同一把鑰匙 Encrypt 跟 Decrypt 資料。因為傳送方會把鑰匙一併傳給接收方，駭客在過程中可能攔截鑰匙就能解密其加密的資訊。
 
 #### 3.1.2. Asymmetric Encryption
-產生兩把鑰匙，Public Key (Lock) 跟 Private Key。**只有對應的那把 Private Key 才能解密 Public Key 加密的資訊。**
+產生兩把鑰匙，Public Key (想像成是 Lock) 跟 Private Key。**只有對應的 Private Key 才能解密用 Public Key 加密的資訊。**
 - Public Key (`*.crt`, `*.pem`): 可公開
 - Private Key (`*.key`, `*-key.pem`): 不可公開
 
@@ -79,7 +79,7 @@ ssh-keygen
 ```
 cat id_rsa.pub >> ~/.ssh/authorized_key
 ```
-同一台裝置的 Public Key 可以放在多台 Server 上，讓那台裝置能 SSH 到不同的 Server；同一台 Server 也可以存有不同裝置的 Public Key，讓不同的裝置都能 SSH 到那一台 Server。
+一台裝置的 Public Key 可以放在多台 Server 上，讓那台裝置能 SSH 到不同的 Server；一台 Server 也可以存有不同裝置的 Public Key，讓不同的裝置都能 SSH 到那一台 Server。
 
 #### 3.2.2. Web Server: Asymmetric Encryption + Symmetric Encription
 Server & Client 先產生各自的 Public & Private Key
@@ -100,7 +100,7 @@ Browser 會驗證 Certificate Server 傳送 Public Key 時附帶的 Certificate�
 
 就會被認為是不安全的。
 
-參與取得驗證的 CA, Server, 流程等，統稱為 **Public Key Infrastructure (PKI)**。
+**參與取得驗證的 CA, Server, 流程等，統稱為 Public Key Infrastructure (PKI)**。
 
 :::info
 **Browser 如何驗證 CA ?**
@@ -157,26 +157,26 @@ TLS Certificates 建立步驟:
 Certificate name: `/CN=KUBERNETES_CA`
 ```
 # Generate Keys
-openssl genrsa -out ca.key 2048
+openssl genrsa -out [ca.key] 2048
 
 # Certificate Signing Request
-openssl req -new -key ca.key -subj "/CN=KUBERNETES_CA" -out ca.csr
+openssl req -new -key [ca.key] -subj "[/CN=KUBERNETES_CA]" -out [ca.csr]
 
 # Sign Certificates
-openssl x509 -req -in ca.csr -signkey ca.key -out ca.crt
+openssl x509 -req -in [ca.csr] -signkey [ca.key] -out [ca.crt]
 ```
 #### 5.1.2. Admin User
-Certificate name: `/CN=kube-admin`
+Certificate name: `/CN=kube_admin`
 Group: `/O=system:masters`
 ```
 # Generate Keys
-openssl genrsa -out admin.key 2048
+openssl genrsa -out [admin.key] 2048
 
 # Certificate Signing 
-openssl req -new -key admin.key -subj "/CN=kube-admin/O=system:masters" -out admin.csr
+openssl req -new -key [admin.key] -subj "[/CN=kube_admin/O=system:masters]" -out [admin.csr]
 
 # Sign Certificates
-openssl x509 -req -in admin.csr -CA ca.crt -CAkey ca.key -out admin.crt
+openssl x509 -req -in [admin.csr] -CA [ca.crt] -CAkey [ca.key] -out [admin.crt]
 ```
 - `-subj`
     - `CN`: Common name
@@ -184,55 +184,31 @@ openssl x509 -req -in admin.csr -CA ca.crt -CAkey ca.key -out admin.crt
 - `-CA`, `-CAkey`: 用 Kubernetes CA 讓 Athentication 在這個 Cluster 是有效的。
 
 Scheduler, Controller, Kube-proxy 比照辦理，前兩個都是 System Component，因此命名 `/CN=SYSTEM:KUBE-SCHEDULER` 以及 `/CN=SYSTEM:KUBE-CONTROLLER-MANAGER`；Kube-proxy 則命名為 `/CN=KUBE-PROXY`。
-#### 使用 Certificate
-有 `*.crt` 跟 `*.key` 以及 `ca.crt`後，`curl` 不需要帶帳號密碼。
-```
-curl https://kube-apiserver:6443/api/v1/pods \
---key admin.key \
---cert admin.crt \
---cacert ca.crt
-```
-也可以用 `Config` YAML 定義。
-```yaml
-apiVersion: v1
-clusters:
-- cluster:
-    certificate-authority: ca.crt
-    server: https://kube-apiserver:6443
-  name: kubernetes
-kind: Config
-users:
-- name: kubernetes-admin
-  user:
-    client-certificate: admin.crt
-    client-key: admin.key
-```
 #### 5.1.3. Kubelet-client
 Certificate name: `/CN=system:node:[nodeName]`
 Group: `/O=system:nodes`
 ```
 # Generate Keys
-openssl genrsa -out system:node:[nodeName].key 2048
+openssl genrsa -out [system:node:[nodeName].key] 2048
 
 # Certificate Signing 
-openssl req -new -key system:node:[nodeName].key -subj "/CN=[nodeName]/O=system:node" -out system:node:[nodeName].csr
+openssl req -new -key [system:node:[nodeName].key] -subj "/CN=[nodeName]/O=system:node" -out [system:node:[nodeName].csr]
 
 # Sign Certificates
-openssl x509 -req -in system:node:[nodeName].csr -CA ca.crt -CAkey ca.key -out system:node:[nodeName].crt
+openssl x509 -req -in [system:node:[nodeName].csr] -CA [ca.crt] -CAkey [ca.key] -out [system:node:[nodeName].crt]
 ```
-
 ### 5.2. Server Certificate
 #### 5.2.1. Kube-apiserver
 Certificate name: `/CN=kube-apiserver`
 ```
 # Generate Keys
-openssl genrsa -out apiserver.key 2048
+openssl genrsa -out [apiserver.key] 2048
 
 # Certificate Signing 
-openssl req -new -key apiserver.key -subj "/CN=kube-apiserver" -out apiserver.csr -config openssl.cnf
+openssl req -new -key [apiserver.key] -subj "[/CN=kube-apiserver]" -out [apiserver.csr] -config [openssl.cnf]
 
 # Sign Certificates
-openssl x509 -req -in apiserver.csr -CA ca.crt -CAkey ca.key -out apiserevr.crt
+openssl x509 -req -in [apiserver.csr] -CA [ca.crt] -CAkey [ca.key] -out [apiserevr.crt]
 ```
 - `-config`: Openssl config file
 
@@ -275,6 +251,29 @@ runtimeRequestTimeout: "15m"
 tlsCertFile: "/var/lib/kubelet/kubelet-node01.crt"
 tlsPrivateKeyFile: "/var/lib/kubelet/kubelet-node01.key"
 ```
+### 5.3. 使用 Certificate
+有 `ca.crt`、`*.key` 以及 `*.crt` 後，`curl` 不需要帶帳號密碼。
+```
+curl https://kube-apiserver:6443/api/v1/pods \
+--cacert [ca.crt] \
+--key [admin.key] \
+--cert [admin.crt]
+```
+也可以用 `Config` YAML 定義。
+```yaml
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: ca.crt
+    server: https://kube-apiserver:6443
+  name: kubernetes
+kind: Config
+users:
+- name: kubernetes-admin
+  user:
+    client-certificate: admin.crt
+    client-key: admin.key
+```
 
 ## 6. View Certificate Detail
 依據 Cluster 建立方式的不同，到不同的地方去找 Configuration。
@@ -309,13 +308,19 @@ docker ps -a
 docker log [containerId]
 ```
 
-## 7. Certificates API
-儲放 Certificate Key 的 CA Server 位於 Master Node ，可以透過 API 經由 Controller Manager 的 `CSR-APPROVING` 跟 `CSR-SIGNING` 來執行授權的動作。
+## 7. Certificate Signing Request (CSR)
+Kubernetes Certificates API 透過 `CertificateSigningRequest` Object 簡化新增 Certificates 的流程。
+
+儲放 Certificate Key 的 CA Server 位於 Master Node ，可以透過 API 經由 Controller-Manager 的 `CSR-APPROVING` Controller 跟 `CSR-SIGNING` Controller 來執行授權的動作。Controller-Manager 的 Config 有參數可以指定 `ca.crt` 跟 `ca.key` 存放的位置。
+```
+--cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt
+--cluster-signing-key-file=/etc/kubernetes/pki/ca.key
+```
 ### 7.1. Certificates API 使用
 #### 7.1.1. User 建立 Key 及 CSR
 ```
-openssl genrsa -out jane.key 2048
-openssl req -in jane.key -subj "/CN=jane" -out jane.csr
+openssl genrsa -out [jane.key ]2048
+openssl req -in [jane.key] -subj "[/CN=jane]" -out [jane.csr]
 ```
 #### 7.1.2. Admin 授權 User CSR
 **Step 1: 新增 `CertificateSigningRequest` YAML**
@@ -333,8 +338,7 @@ spec:
   - digital signature
   - key encipherment
   - server auth
-  request:
-    [csrBase64Encode]
+  request: [csrBase64Encode]
 ```
 - `[csrBase64Encode]`
   
@@ -378,19 +382,28 @@ spec:
   - server auth
   username: kubernetes-admin
 status:
-  certificate:
-[csrBase64Encode]
+  certificate: [csrBase64Encode]
   conditions:
   - lastUpdateTime: 2019-02-13T16:37:21Z
     message: This CSR was approved by kubectl certificate approve.
     reason: KubectlApprove
     type: Approved
 ```
-```
-echo [csrBase64Encode] --decode
-```
+- `[csrBase64Encode]`
+  
+  ```
+  echo [csrBase64Encode] -d
+  ```
 
 ## 8. KubeConfig
+為了避免每一次存取 Kubernetes 各個 Server 都要提供 CA Cert、Client Cert 以及 Client Key (如下)，可以把資訊都集中放在 KubeConfig 中。
+```
+kubectl get pods \
+--server my-kube-playground:6443 \
+--client-key admin.key \
+--client-certificate admin.crt \
+--certificate-authority ca.crt
+```
 只需要把檔案放在 `~/.kube/config/` 下就好 (不用 Create Object)。
 
 `my-kube-playground.yaml`
@@ -470,7 +483,7 @@ kubectl config use-context [prod-user@production]
 ```
 > Kubernetes API Reference Doc: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/
 
-## 10. Authorization Mode
+## 10. Authorization
 設定在 Kube-apiserver 的 `--authorization-mode`。
 1. **Node Authorizer**
 CN 名為 `system:node:[nodeName]` Group 為 `system:nodes` 都會被 Node Authorizer 授予權限。
@@ -479,7 +492,7 @@ CN 名為 `system:node:[nodeName]` Group 為 `system:nodes` 都會被 Node Autho
 3. **Role-based Access Control (RBAC)**
 設定角色權限，可以綁定到 User 上。
 4. **Webhook**
-利用第三方軟體 (如: Open Policy Agent)，Kubernetes 在。
+利用第三方軟體 (如: Open Policy Agent)。
 5. **AlwaysAllow**
 不確認權限，接受所有請求。
 6. **AlwaysDeny**
@@ -508,7 +521,7 @@ rules:
   resource: ["ConfigMap"]
   verbs: ["create"]
 ```
-- `apiGroups`: 如果是 Core，可以 `[""]` 表示。
+- `apiGroups`: 如果是 Core Group 裡的，可以 `[""]` 表示。
 ```
 kubectl create -f [developer-role.yaml]
 ```
@@ -596,24 +609,36 @@ roleRef:
 kubectl create -f cluster-admin-role-binding.yaml
 ```
 
-## 13. Service Accounts
+## 13. ServiceAccounts
 第三方應用存取 Kubernetes API。
-### 12.1. List Service Account
+### 13.1. List ServiceAccount
 ```
-kubectl get serviceaccount
+kubectl get sa
 ```
-### 12.2. Create Service Account
-產生 `serviceaccount` 跟 `secret` 來儲存 Token，作為 Athorization Bearer Token。
+### 13.2. Create ServiceAccount
+新增 ServiceAccount。會在 `/var/rbac/` 新增 `dashboard-sa-role-binding.yaml` 及 `pod-reader-role.yaml`。
 ```
-kubectl create serviceaccount dashboard-sa
+kubectl create sa dashboard-sa
 ```
-若第三方應用是起在 Kubernetes 上，可以直接把 Secret Mount 到 Pod 裡面。
-
-### 12.3. Get Service Account Details
+為 ServiceAccount 產生 Token。
 ```
-kubectl describe serviceaccount dashboard-sa
+kubectl create token dashboard-sa
 ```
-### 12.4. Use Service Account
+### 13.3. Get Service Account Details
+```
+kubectl describe sa dashboard-sa
+```
+```
+Name:                dashboard-sa
+Namespace:           default
+Labels:              <none>
+Annotations:         <none>
+Image pull secrets:  <none>
+Mountable secrets:   <none>
+Tokens:              <none>
+Events:              <none>
+```
+### 13.4. Use Service Account
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -623,17 +648,19 @@ spec:
   containers:
   - name: my-kubernetes-dashboard
     image: my-kubernetes-dashboard
-serviceAccountName: dashboard-sa
+  serviceAccountName: dashboard-sa
 ```
 - `serviceAccountName`
 - `automountServiceAccountToken: False`: Pod 在建立時不會自動 Mount `default` Service Account
 
-## 13. Image Security
+若第三方應用是起在 Kubernetes 上，也可以直接把 Secret Mount 到 Pod 裡面。
+
+## 14. Image Security
 ```
 kubectl create secret docker-registry [secretName] \
---docker-server=[private-registry.io]
---docker-username=[registry-user]
---docker-password=[regitry-password]
+--docker-server=[private-registry.io] \
+--docker-username=[registry-user] \
+--docker-password=[regitry-password] \
 --docker-email=[registry-user@org.com]
 ```
 ```yaml
@@ -649,8 +676,8 @@ spec:
   - name: regcred
 ```
 
-## 14. Security in Docker
-### 14.1. Namespace
+## 15. Security in Docker
+### 15.1. Namespace
 Docker 將 Container 運行在 Host Kernel，以 Namespace 做區隔。
 - 在 Container Terminal 下 `ps aux` 只會看到該 Container 執行過的 Process
 - 在 Host Terminal 下 `ps aux` 可以看到在 Host 上執行的所有 Container 的 Process
@@ -659,23 +686,23 @@ Docker 預設用 root 執行所有 Process，如果要用其他身份執行，�
 1. `docker run` 建立新的 Container 時指定 `--user`
 2. 建立 Docker Images 時在 Dockerfile 指定 `USER`
 
-### 14.2. Linux Capabilities
+### 15.2. Linux Capabilities
 Docker container 的 root 權限有做過調整，預設取消 `MAC_ADMIN`, `BROADCAST`, `NET_ADMIN`, `SYS_ADMIN` 等等的能力，只允許內定義的 `/usr/include/linux/capability.h` 的項目。
 
-#### 14.2.1. 增加特定 Capabilities
+#### 15.2.1. 增加特定 Capabilities
 ```
 docker run --cap-add [MAC_ADMIN] [nginx]
 ```
-#### 14.2.2. 移除特定 Capabilities
+#### 15.2.2. 移除特定 Capabilities
 ```
 docker run --cap-drop [MAC_ADMIN] [nginx]
 ```
-#### 14.2.3. 允許所有 Capabilities
+#### 15.2.3. 允許所有 Capabilities
 ```
 docker run --privileged [nginx]
 ```
 
-## 15. Security Contexts
+## 16. Security Contexts
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -683,6 +710,7 @@ metadata:
   name: web-pod
 spec:
   containers:
+  runAsUser: 1010
   - name: ubuntu
     image: ubuntu
     command: ["sleep", "3600"]
@@ -691,13 +719,14 @@ spec:
       capabilities:
         add: ["MAC_ADMIN"]
 ```
-- `securityContext` 如果在 Pod 跟 Container 都有設定，Container 內部的設定會覆蓋掉 Pod 的。但 `capabilities` 只有 Container-level 能設定。
+- `securityContext` 如果在 Pod 跟 Container 都有設定，Container 內部的設定會覆蓋掉 Pod 的。
+- `capabilities` 只能在 Container 裡設定。
 
-## 16. Network Policy
+## 17. Network Policy
 Kubernetes 預設 `AllAllow` 允許所有的 Pod 間都能互相溝通，如果要只允許特定的 Network Traffic (Ingress 或 Egress) 進到 Pod 裏面，就要設定 Network Policy。
 > Network Solution 像是 Flannel 不支援 Network Policy。
 
-### 16.1. Create Network Policy
+### 17.1. Create Network Policy
 `policy-definition.yaml`
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -739,8 +768,9 @@ spec:
 ```
 kubectl create -f policy-definition.yaml
 ```
-#### 16.1.1. Rules Setting
+#### 17.1.1. Rules Setting
 #### (`podSelector` AND `namespaceSelector`) OR `ipBlock`
+阻擋 IP 範圍為 `192.168.5.10/32` 的 Ingress 到 `prod` Namespace 下的 `api-pod`  Pod。
 ```yaml
 ...
 ingress:
@@ -756,6 +786,7 @@ ingress:
 ...
 ```
 #### `podSelector` OR `namespaceSelector` OR `ipBlock`
+阻擋 IP 範圍為 `192.168.5.10/32` 的 Ingress 到 `api-pod` Pod 或是 `prod` Namespace 下的任何 Pod。
 ```yaml
 ...
 ingress:
