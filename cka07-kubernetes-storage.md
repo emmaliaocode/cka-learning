@@ -18,7 +18,7 @@ docker volume create data_volume
 docker run -v data_volume:/var/lib/mysql mysql
 ```
 #### 1.1.2. Bind Mount
-將既有的資料夾 Mount 到 Container。
+用 `-v` 將既有的資料夾 Mount 到 Container。
 ```
 docker run -v /data/mysql:/var/lib/mysql mysql
 ```
@@ -180,8 +180,7 @@ spec:
 ```
 
 ## 6. Storage Class
-Automatically provision storage.
-- Dynamic provisioning of volumes: Storage Class 會自動建立 PV (不用寫 PV definition file)，PV 建立後會與 PVC 綁定，Pod 便可以使用。
+Dynamic provisioning of volumes，Storage Class 會自動建立 PV (不用寫 PV definition file)，PV 建立後會與 PVC 綁定，Pod 便可以使用。
 
 `sc-definition.yaml`
 ```yaml
