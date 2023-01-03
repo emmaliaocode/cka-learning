@@ -540,17 +540,18 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: devuser-developer-binding
-subjects:
-- kind: User
-  name: dev-user
-  apiGroup: rbac.authorization.k8s.io
 roleRef:
   kind: Role
   name: developer
   apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: User
+  name: dev-user
+  apiGroup: rbac.authorization.k8s.io
 ```
 - `subjects`: User 詳情 (KubeConfig 裡的 `users`)。
 - `roleRef`: Role 詳情。
+- `subjects.name`: 對應 `kubectl describe csr [csrName]` 的 **Common Name**，而非 CSR 的 Name。
 ```
 kubectl create -f [devuser-developer-binding.yaml]
 ```
